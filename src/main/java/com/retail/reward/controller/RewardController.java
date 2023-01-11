@@ -8,8 +8,8 @@ import javax.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.retail.reward.model.RewardModel;
@@ -30,13 +30,13 @@ public class RewardController {
 
 	}
 	
-	@GetMapping(value = "rewards/{id}")
-	public ResponseEntity<RewardModel>  getRewardDetails(@PathVariable @NotNull int id) {
+	@GetMapping(value = "customer-rewards")
+	public ResponseEntity<RewardModel>  getRewardDetails(@RequestParam @NotNull Long id) {
 		
 		try {
-			return ResponseEntity.ok(rewardServiceImpl.getRewardDetails(Long.valueOf(id)));
+			return ResponseEntity.ok(rewardServiceImpl.getRewardDetails(id));
 		} catch (IOException e) {
-			return ResponseEntity.ok(null);
+			return ResponseEntity.badRequest().body(null);
 		}
 
 	}

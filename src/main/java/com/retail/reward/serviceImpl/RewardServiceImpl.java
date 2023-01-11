@@ -9,17 +9,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.reward.constants.Constants;
+import com.retail.reward.dao.TransactionDao;
 import com.retail.reward.model.RewardModel;
 import com.retail.reward.model.TransactionModel;
 import com.retail.reward.service.RewardService;
@@ -27,25 +24,29 @@ import com.retail.reward.service.RewardService;
 @Service
 public class RewardServiceImpl implements RewardService {
 	
-	@Value("classpath:transactions.json")
-	Resource transactionFile;
+	@Autowired
+	TransactionDao transactionDaoImpl;
 
 
+	/**
+	 * This method returns the rewards of a particular customer
+	 * @param customerId customer id
+	 * @return rewardModel
+	 */
 	@Override
 	public RewardModel getRewardDetails(@NotNull Long customerId) throws IOException {
-		List<TransactionModel> transactionModels = readTransactionsFile();
+		List<TransactionModel> transactionModels = transactionDaoImpl.getTransactionDataFromFile();
 		return getCustomerRewards(transactionModels, customerId);
 	}
 
-	private List<TransactionModel> readTransactionsFile() throws IOException {
-		ObjectMapper mapper = new ObjectMapper();
-		List<TransactionModel> transactionModels = mapper.readValue(transactionFile.getFile(), new TypeReference<List<TransactionModel>>(){});
-		return transactionModels;
-	}
-
+	
+	/**
+	 * This method returns rewards of all customers
+	 * @return list of customers with their rewards
+	 */
 	@Override
 	public List<RewardModel> getAllRewardDetails() throws  IOException {
-		List<TransactionModel> transactionModels = readTransactionsFile();
+		List<TransactionModel> transactionModels = transactionDaoImpl.getTransactionDataFromFile();
 		List<RewardModel> rewardDetails = new ArrayList<RewardModel>();
 		if (!CollectionUtils.isEmpty(transactionModels)) {
 			Set<Long> customerIds = transactionModels.stream().distinct().map(p -> p.getCustomerId())
@@ -65,8 +66,10 @@ public class RewardServiceImpl implements RewardService {
 		rewardModel.setCustomerId(customerId);
 		List<TransactionModel> transactions = transactionModels.stream()
 				.filter(t -> t.getCustomerId().equals(customerId)).collect(Collectors.toList());
-		rewardModel.setCustomerName(transactions.get(0).getCustomerName());
-		Map<String, Long> monthlyRewards = new HashMap<>();
+		if(!CollectionUtils.isEmpty(transactions)) {
+			
+			rewardModel.setCustomerName(transactions.get(0).getCustomerName());
+			Map<String, Long> monthlyRewards = new HashMap<>();
 			Set<String> months = transactionModels.stream().distinct().map(p -> p.getTransactionDate())
 					.collect(Collectors.toSet());
 			for(String month: months) {
@@ -75,11 +78,17 @@ public class RewardServiceImpl implements RewardService {
 				monthlyRewards.put(month, getMonthlyRewards(monthlyTransactions));
 				
 			}
-		rewardModel.setMonthlyRewards(monthlyRewards);
-		rewardModel.setTotalRewards(monthlyRewards.values().stream().mapToLong(Long::valueOf).sum());
+			rewardModel.setMonthlyRewards(monthlyRewards);
+			rewardModel.setTotalRewards(monthlyRewards.values().stream().mapToLong(Long::valueOf).sum());
+		}
 		return rewardModel;
 	}
 
+	/**
+	 * Calculating total rewards 
+	 * @param monthlyTransactions
+	 * @return total rewards
+	 */
 	private Long getMonthlyRewards(List<TransactionModel> monthlyTransactions) {
 		Long rewards = 0L;
 		for(TransactionModel transaction: monthlyTransactions) {
@@ -88,7 +97,13 @@ public class RewardServiceImpl implements RewardService {
 		return rewards;
 	}
 
-	private Long calculateReward(@Valid TransactionModel transactionModel) {
+	/**
+	 * Calculates the rewards
+	 * receives 2 points for every dollar spent over $100 in each transaction, plus 1 point for every dollar spent between $50 and $100 in each transaction
+	 * @param transactionModel
+	 * @return reward points
+	 */
+	private Long calculateReward( TransactionModel transactionModel) {
 		Long rewardPoints = 0L;
 		BigDecimal eligibleAmount = BigDecimal.ZERO;
 		if(Constants.BIGDECIMAL_HUNDRED.compareTo(transactionModel.getAmount()) == -1) {
