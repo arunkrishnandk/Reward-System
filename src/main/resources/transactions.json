@@ -1,0 +1,26 @@
+[{
+    "amount": 120 ,
+	"customerId": 2,
+	
+	"customerName": "SME",
+	
+	"transactionDate": "Jan-2023"
+	
+},
+{
+      "amount": 120 ,
+	"customerId": 2,
+	
+	"customerName": "SME",
+	
+	"transactionDate": "Feb-2023"
+	
+}, {
+      "amount": 100 ,
+	"customerId": 1,
+	
+	"customerName": "SAm",
+	
+	"transactionDate": "Jan-2023"
+	
+}]
